@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sunshine Data Visualization</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #f4f4f9;
+        }
+        .chart-container {
+            width: 90%;
+            max-width: 960px;
+            padding: 20px;
+            box-shadow: 0 6px 10px rgba(0,0,0,0.1);
+            background: white;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        canvas {
+            width: 100%;
+            height: auto;
+        }
+        .control {
+            margin: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="chart-container">
+        <canvas id="sunshineChart"></canvas>
+    </div>
+    <div class="control">
+        <label for="citySelector">Choose a city:</label>
+        <select id="citySelector" onchange="updateCityView()">
+            <option value="">Select a city...</option>
+        </select>
+        <label for="monthSelector">Choose a month:</label>
+        <select id="monthSelector" onchange="updateMonthView()">
+            <option value="">Select a month...</option>
+        </select>
+    </div>
+    <script>
+        const cityData = [
+            { city: "Kabul", data: [177.2, 178.6, 204.5, 232.5, 310.3, 353.4, 356.8, 339.7, 303.9, 282.6, 253.2, 182.4] },
+            { city: "Baku", data: [89.9, 89.0, 124.0, 195.0, 257.3, 294.0, 313.1, 282.1, 222.0, 145.7, 93.0, 102.3] },
+            { city: "Beirut", data: [133, 148, 194, 246, 312, 352, 361, 333, 288, 246, 202, 149] },
+            { city: "Dhaka", data: [279, 226, 217, 180, 155, 90, 62, 62, 90, 186, 240, 279] },
+            { city: "Beijing", data: [194.1, 194.7, 231.8, 251.9, 283.4, 261.4, 212.4, 220.9, 232.1, 222.1, 185.3, 180.7] },
+            { city: "Chongqing", data: [48.0, 56.0, 81.0, 111.0, 139.0, 128.0, 221.0, 222.0, 123.0, 63.0, 47.0, 54.0] },
+            { city: "Fuzhou", data: [101.6, 79.2, 89.1, 111.0, 114.4, 141.9, 225.6, 199.2, 153.7, 144.2, 120.3, 126.9] },
+            { city: "Guangzhou", data: [118.5, 71.6, 62.4, 65.1, 104.0, 140.2, 202.0, 173.5, 170.2, 181.8, 172.7, 166.0] },
+            { city: "Hong Kong", data: [143.0, 94.2, 90.8, 101.7, 140.4, 146.1, 212.0, 188.9, 172.3, 193.9, 180.1, 172.2] },
+            { city: "Lhasa", data: [250.9, 226.7, 246.1, 248.9, 276.6, 257.3, 227.4, 219.6, 229.0, 281.7, 267.4, 258.6] },
+            { city: "Macau", data: [127.4, 79.4, 71.5, 85.3, 136.4, 155.3, 223.2, 195.4, 176.5, 192.3, 172.2, 159.1] },
+            { city: "Nanjing", data: [124.7, 120.3, 144.7, 169.2, 194.2, 162.8, 196.7, 201.6, 164.0, 164.2, 147.4, 137.1] },
+            { city: "Ningbo", data: [123.7, 108.4, 121.7, 142.4, 156.7, 147.8, 243.8, 238.0, 171.5, 166.5, 143.4, 146.1] },
+            { city: "Qingdao", data: [186.0, 180.8, 220.1, 222.0, 244.9, 219.0, 182.9, 223.2, 219.0, 220.1, 189.0, 182.9] },
+            { city: "Shanghai", data: [114.3, 119.9, 128.5, 148.5, 169.8, 130.9, 190.8, 185.7, 167.5, 161.4, 131.1, 127.4] },
+            { city: "Tianjin", data: [170.1, 170.2, 202.4, 223.8, 249.0, 226.9, 206.4, 204.4, 205.3, 196.1, 163.0, 157.6] },
+            { city: "Ürümqi", data: [101.6, 128.8, 180.5, 248.0, 283.3, 282.7, 298.7, 301.0, 262.6, 224.4, 127.4, 84.3] },
+            { city: "Wuhan", data: [101.9, 97.0, 121.8, 152.8, 181.0, 170.9, 220.2, 226.4, 175.8, 151.9, 139.3, 126.5] },
+            { city: "Xiamen", data: [133.3, 88.3, 89.6, 105.6, 132.6, 163.8, 234.6, 211.6, 178.9, 188.4, 163.0, 163.5] },
+            { city: "Delhi", data: [214.6, 216.1, 239.1, 261.0, 263.1, 196.5, 165.9, 177.0, 219.0, 269.3, 247.2, 215.8] },
+            { city: "Kolkata", data: [203.9, 201.2, 225.8, 235.4, 227.1, 123.1, 93.1, 104.9, 116.2, 182.6, 190.8, 203.4] },
+            { city: "Mumbai", data: [269.5, 257.6, 274.3, 283.7, 296.2, 148.6, 73.4, 75.9, 165.1, 240.2, 245.8, 253.2] },
+            { city: "Bangalore", data: [262.0, 248.0, 271.0, 257.0, 241.0, 137.0, 112.0, 114.0, 144.0, 173.0, 190.0, 212.0] },
+            { city: "Chennai", data: [232.5, 240.1, 291.4, 294.0, 300.7, 234.0, 142.6, 189.1, 195.0, 257.3, 261.0, 210.8] },
+            { city: "Denpasar", data: [173.1, 174.0, 210.7, 224.7, 242.9, 228.1, 246.8, 261.7, 251.3, 252.5, 224.4, 176.4] },
+            { city: "Jakarta", data: [189.1, 180.8, 238.7, 255.0, 260.4, 255.0, 282.1, 294.5, 300.7, 279.0, 231.0, 217.0] },
+            { city: "Makassar", data: [155, 168, 186, 240, 248, 241, 270, 298, 300, 305, 280, 158] },
+            { city: "Medan", data: [129.6, 141.0, 153.1, 131.2, 134.8, 157.9, 153.9, 143.9, 123.1, 116.3, 104.8, 98.1] },
+            { city: "Bandar Abbas", data: [220.1, 211.9, 232.5, 242.4, 312.7, 302.2, 264.6, 270.1, 270.1, 283.4, 251.2, 228.8] },
+            { city: "Isfahan", data: [205.3, 213.3, 242.1, 244.5, 301.3, 345.4, 347.6, 331.2, 311.6, 276.5, 226.1, 207.6] },
+            { city: "Mashhad", data: [148.3, 147.5, 163.3, 200.4, 280.4, 343.2, 366.9, 359.7, 305.2, 249.5, 188.3, 151.6] },
+            { city: "Tehran", data: [137.2, 151.1, 186.0, 219.1, 279.8, 328.7, 336.6, 336.8, 300.5, 246.8, 169.4, 134.1] },
+            { city: "Baghdad", data: [192.2, 203.3, 244.9, 255.0, 300.7, 348.0, 347.2, 353.4, 315.0, 272.8, 213.0, 195.3] },
+            { city: "Tel Aviv", data: [192.2, 200.1, 235.6, 270.0, 328.6, 357.0, 368.9, 356.5, 300.0, 279.0, 234.0, 189.1] },
+            { city: "Sapporo", data: [92.5, 104.0, 146.6, 176.5, 198.4, 187.8, 164.9, 171.0, 160.5, 152.3, 100.0, 85.9] },
+            { city: "Sendai", data: [148.1, 151.8, 177.0, 188.5, 185.2, 133.8, 119.5, 144.4, 121.2, 148.6, 139.6, 138.6] },
+            { city: "Tokyo", data: [184.5, 165.8, 163.1, 176.9, 167.8, 125.4, 146.4, 169.0, 120.9, 131.0, 147.9, 178.0] },
+            { city: "Kanazawa", data: [63.5, 84.1, 141.3, 185.5, 202.3, 152.6, 158.9, 221.5, 144.1, 150.4, 104.1, 72.5] },
+            { city: "Nagoya", data: [170.1, 170.0, 189.1, 196.6, 197.5, 149.9, 146.3, 200.4, 151.0, 169.0, 162.7, 172.2] },
+            { city: "Almaty", data: [118, 119, 147, 194, 241, 280, 306, 294, 245, 184, 127, 101] },
+            { city: "Astana", data: [103, 147, 192, 238, 301, 336, 336, 294, 230, 136, 100, 94] },
+            { city: "Ulaanbaatar", data: [179.1, 204.8, 265.2, 262.5, 299.3, 269.0, 249.3, 258.3, 245.7, 227.5, 177.4, 156.4] },
+            { city: "Pyongyang", data: [184, 197, 231, 237, 263, 229, 181, 204, 222, 214, 165, 165] },
+            { city: "Muscat", data: [268.6, 244.8, 278.3, 292.5, 347.4, 325.7, 277.7, 278.6, 303.9, 316.9, 291.9, 267.0] },
+            { city: "Karachi", data: [270.7, 249.4, 271.6, 277.4, 299.1, 231.8, 155.0, 147.7, 218.8, 283.5, 273.3, 272.0] },
+            { city: "Lahore", data: [218.8, 215.0, 245.8, 276.6, 308.3, 269.0, 227.5, 234.9, 265.6, 290.0, 259.6, 222.9] },
+            { city: "Quetta", data: [229.1, 209.95, 232.5, 273.0, 334.8, 327.0, 313.1, 313.1, 294.0, 306.9, 279.0, 238.7] },
+            { city: "Manila", data: [176.7, 197.8, 225.8, 258.0, 222.7, 162.0, 132.8, 132.8, 132.0, 157.6, 153.0, 151.9] },
+            { city: "Dikson", data: [0.0, 22.6, 127.1, 237.0, 189.1, 141.0, 223.2, 139.5, 60.0, 24.8, 0.0, 0.0] },
+            { city: "Irkutsk", data: [93, 149, 207, 223, 266, 264, 243, 218, 182, 152, 93, 62] },
+            { city: "Omsk", data: [68, 125, 184, 235, 284, 319, 321, 248, 180, 105, 71, 61] },
+            { city: "Petropavlovsk-Kamchatsky", data: [105.4, 115.8, 176.7, 192.0, 192.2, 192.0, 170.5, 176.7, 177.0, 158.1, 123.0, 93.0] },
+            { city: "Vladivostok", data: [178, 184, 216, 192, 199, 130, 122, 149, 197, 205, 168, 156] },
+            { city: "Yakutsk", data: [18.6, 98.0, 232.5, 273.0, 303.8, 333.0, 347.2, 272.8, 174.0, 105.4, 60.0, 9.3] },
+            { city: "Abha", data: [266.6, 265.6, 294.5, 282.0, 288.3, 276.0, 232.5, 238.7, 273.0, 291.4, 273.0, 266.6] },
+            { city: "Riyadh", data: [212.4, 226.6, 219.8, 242.3, 287.7, 328.2, 332.1, 309.2, 271.6, 311.4, 269.2, 214.3] },
+            { city: "Singapore", data: [172.4, 183.2, 192.7, 173.6, 179.8, 177.7, 187.9, 180.6, 156.2, 155.2, 129.6, 133.5] },
+            { city: "Busan", data: [199.0, 182.5, 193.0, 210.0, 221.7, 179.7, 165.8, 200.9, 167.2, 208.9, 194.4, 204.3] },
+            { city: "Seoul", data: [160.3, 163.3, 189.0, 205.0, 213.0, 182.0, 120.0, 152.5, 176.2, 198.8, 153.2, 152.6] },
+            { city: "Kaohsiung", data: [174.7, 165.8, 187.0, 189.1, 198.5, 199.9, 221.4, 193.7, 175.7, 182.4, 162.2, 161.8] },
+            { city: "Taichung", data: [176.6, 140.6, 149.9, 137.8, 158.7, 160.1, 199.6, 178.7, 175.8, 203.7, 179.4, 182.3] },
+            { city: "Taipei", data: [80.6, 71.3, 89.6, 92.6, 113.7, 121.7, 179.0, 188.9, 153.7, 124.0, 99.4, 90.7] },
+            { city: "Bangkok", data: [272.5, 249.9, 269.0, 256.7, 216.4, 178.0, 171.8, 160.3, 154.9, 198.1, 234.2, 262.0] },
+            { city: "Chiang Mai", data: [272.8, 257.1, 294.5, 279.0, 198.4, 156.0, 120.9, 117.8, 144.0, 201.5, 216.0, 254.2] },
+            { city: "Hat Yai", data: [182.9, 166.7, 186.0, 144.0, 114.7, 111.0, 114.7, 114.7, 108.0, 111.6, 105.0, 108.5] },
+            { city: "Nakhon Ratchasima", data: [226.3, 211.9, 201.5, 186.0, 155.0, 114.0, 117.8, 117.8, 108.0, 145.7, 186.0, 226.3] },
+            { city: "Ankara", data: [77.5, 98.9, 161.2, 189.0, 260.4, 306.0, 350.3, 328.6, 276.0, 198.4, 132.0, 71.3] },
+            { city: "Dubai", data: [254.2, 229.6, 254.2, 294.0, 344.1, 342.0, 322.4, 316.2, 309.0, 303.8, 285.0, 254.2] },
+            { city: "Tashkent", data: [117.8, 127.1, 164.3, 216.0, 303.8, 363.0, 384.4, 365.8, 300.0, 226.3, 150.0, 105.4] },
+            { city: "Da Lat", data: [255, 234, 255, 202, 190, 147, 157, 136, 133, 140, 172, 215] },
+            { city: "Da Nang", data: [139, 145, 188, 209, 246, 239, 253, 218, 176, 145, 120, 103] },
+            { city: "Hanoi", data: [74, 47, 47, 90, 183, 172, 195, 174, 176, 167, 137, 124] },
+            { city: "Ho Chi Minh City", data: [245, 246, 272, 239, 195, 171, 180, 172, 162, 182, 200, 226] }
+        ];
+        
+        const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+        function initSelectors() {
+            const citySelect = document.getElementById('citySelector');
+            const monthSelect = document.getElementById('monthSelector');
+            cityData.forEach(city => {
+                let option = new Option(city.city, city.city);
+                citySelect.add(option);
+            });
+            months.forEach((month, index) => {
+                let option = new Option(month, index);
+                monthSelect.add(option);
+            });
+        }
+
+        function updateCityView() {
+            const city = cityData.find(c => c.city === document.getElementById('citySelector').value);
+            if (!city) return;
+            const data = {
+                labels: months,
+                datasets: [{
+                    label: city.city + " Sunshine Data",
+                    data: city.data
+                }]
+            };
+            updateChart('line', data);
+        }
+
+        function updateMonthView() {
+            const monthIndex = document.getElementById('monthSelector').value;
+            if (monthIndex === "") return;
+            const data = {
+                labels: cityData.map(c => c.city),
+                datasets: [{
+                    label: months[monthIndex] + " Sunshine Data",
+                    data: cityData.map(c => c.data[monthIndex]),
+                }]
+            };
+            updateChart('bar', data);
+        }
+
+        function updateChart(type, data) {
+            const ctx = document.getElementById('sunshineChart').getContext('2d');
+            if (window.myChart) window.myChart.destroy();
+            window.myChart = new Chart(ctx, {
+                type: type,
+                data: data,
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    },
+                    plugins: {
+                        zoom: {
+                            zoom: {
+                                wheel: { enabled: true },
+                                pinch: { enabled: true },
+                                mode: 'xy'
+                            },
+                            pan: {
+                                enabled: true,
+                                mode: 'xy'
+                            }
+                        }
+                    },
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initSelectors();
+        });
+    </script>
+</body>
+</html>
